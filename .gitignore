@@ -1,0 +1,11 @@
+.DS_Store
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+runtime/
+reports/
+examples/sample_workspace/목표2/국어 자료 최종본 모음/
