@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -59,6 +60,36 @@ def _atomic_copy(source: Path, destination: Path) -> None:
     os.replace(temporary, destination)
     if sha256_file(source) != sha256_file(destination):
         raise RuntimeError(f"복사 해시 불일치: {source} -> {destination}")
+
+
+def _backup_existing(final_root: Path, submission: Path, book: str) -> Path | None:
+    candidates = [
+        submission,
+        final_root / f"{book}.zip",
+        final_root / "0. 전체 파일 모음" / f"{book}_전체.hwpx",
+        final_root / "0. 전체 파일 모음" / "pdf" / f"{book}_전체.pdf",
+    ]
+    if not any(path.exists() for path in candidates):
+        return None
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    backup = final_root / f"1. {book} 작업용" / "_work" / "backups" / stamp
+    for path in candidates:
+        if not path.exists():
+            continue
+        if path == submission:
+            shutil.copytree(path, backup / "submission")
+        elif path.parent.name == "pdf":
+            destination = backup / "collection" / "pdf" / path.name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, destination)
+        elif path.parent.name == "0. 전체 파일 모음":
+            destination = backup / "collection" / path.name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, destination)
+        else:
+            backup.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, backup / path.name)
+    return backup
 
 
 def _submission_manifest(root: Path) -> dict[str, str]:
@@ -170,6 +201,7 @@ def run_book(
     book: str,
     *,
     include_pdf: bool = False,
+    backup: bool = True,
 ) -> dict[str, Any]:
     paths = workspace_paths(workspace)
     variant_book = paths["variant"] / book
@@ -183,6 +215,7 @@ def run_book(
     submission = final_root / f"2. {book} 제출용"
     work = final_root / f"1. {book} 작업용"
     reports = work / "_reports"
+    backup_root = _backup_existing(final_root, submission, book) if backup else None
     submission.mkdir(parents=True, exist_ok=True)
     reports.mkdir(parents=True, exist_ok=True)
     unit_outputs: list[Path] = []
@@ -233,6 +266,7 @@ def run_book(
         "unit_reports": unit_reports,
         "whole_report": whole_report,
         "archive": archive,
+        "backup": str(backup_root) if backup_root else None,
         "verification": verification,
         "passed": verification["passed"],
     }

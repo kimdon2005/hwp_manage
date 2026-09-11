@@ -47,6 +47,11 @@ def build_parser() -> argparse.ArgumentParser:
     pipeline.add_argument("--workspace", type=Path, default=Path.cwd())
     pipeline.add_argument("--book", action="append")
     pipeline.add_argument("--pdf", action="store_true", help="PDF 조각도 함께 병합")
+    pipeline.add_argument(
+        "--no-backup",
+        action="store_true",
+        help="기존 최종본 백업 생성을 생략(기본은 백업)",
+    )
 
     verify = sub.add_parser("verify", help="제출용/전체모음/ZIP 최종 대조")
     verify.add_argument("--workspace", type=Path, default=Path.cwd())
@@ -95,7 +100,14 @@ def main(argv: list[str] | None = None) -> int:
         results = []
         for book in books:
             if args.command == "pipeline":
-                results.append(run_book(args.workspace, book, include_pdf=args.pdf))
+                results.append(
+                    run_book(
+                        args.workspace,
+                        book,
+                        include_pdf=args.pdf,
+                        backup=not args.no_backup,
+                    )
+                )
             else:
                 results.append(verify_book(args.workspace, book))
         _print(results)

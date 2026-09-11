@@ -47,6 +47,17 @@ def test_full_pipeline_and_zip(tmp_path: Path) -> None:
     assert checked["zip"]["file_count"] == 3
 
 
+def test_rerun_creates_backup(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    shutil.copytree(SAMPLE, workspace)
+    run_book(workspace, "샘플 교과서")
+    second = run_book(workspace, "샘플 교과서")
+    backup = Path(second["backup"])
+    assert backup.is_dir()
+    assert (backup / "submission" / "샘플 교과서_전체.hwpx").is_file()
+    assert (backup / "샘플 교과서.zip").is_file()
+
+
 def test_module_cli_doctor() -> None:
     result = subprocess.run(
         [
